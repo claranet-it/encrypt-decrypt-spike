@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Encrypt / Decrypt Spike</title>
+    <title>Spike Encrypt / Decrypt</title>
+    
+    <!-- Components: https://www.hyperui.dev/components/application -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
 
@@ -30,7 +32,6 @@
                 <input
                     type="text"
                     id="symmetric-key"
-                    value="op4RUkSHv3CZyL+KbpIlutSNmkcSNfXYRiscQkcZZYv8UdUdgLUT/2XRKN60tM/lPrMJYt7m1kxG14YGxeLWp5LO5J6Ikz3ogkF6La60DjpJ0Qo9+4SP1jb1hmUNbek16qDOrSYkfSlbPpoM7CTCdxSiaCAhBrbKq8J+szBdrIh0+j04VpglFI5z7soJe5mSSBT2Ci+RB8RT3ZRRRXZ5AgRqRl6dY17XqMhHvDP1fOHX5PhKwJdxFx85pulPh+JIRxbTL1s2mljPxYbYWKj06rI7HBAurDXkEgtE+aBo2eA0ApLqAqCe3/rCVvPGzjtnZaB8JX7rERDlHWsVm8+Xzw=="
                     class="mt-0.5 w-full rounded border-gray-300 shadow-sm sm:text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white p-2 rounded border-1"
                 />
             </div>
@@ -78,6 +79,7 @@
           </div>
     </form>
 </body>
+
 <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
 <script type="text/javascript">
     let _globalAESKey = undefined;
