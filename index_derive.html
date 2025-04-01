@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spike Derive Key Encrypt / Decrypt</title>
+    
+    <!-- Components: https://www.hyperui.dev/components/application -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+
+<body class="p-4 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+    <form novalidate onsubmit="return false">
+        <h1 class="text-xl mb-2">Encrypt / Decrypt</h1>
+
+        <label for="password">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Password</span>
+        
+            <div class="flex">
+                <input
+                    type="password"
+                    id="password"
+                    class="mt-0.5 w-full rounded border-gray-300 shadow-sm sm:text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white p-2 rounded border-1"
+                />
+    
+                <button
+                    id="generate-action"
+                    class="inline-block rounded-sm border border-indigo-600 bg-indigo-600 px-12 py-3 text-sm font-medium text-white hover:bg-transparent hover:text-indigo-600 focus:ring-3 focus:outline-hidden"
+                >
+                    Generate
+                </button>
+            </div>
+        </label>
+
+        <br>
+
+        <label for="dataToEncrypt">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Data</span>
+        
+            <div class="flex">
+                <input
+                    type="text"
+                    id="dataToEncrypt"
+                    class="mt-0.5 w-full rounded border-gray-300 shadow-sm sm:text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white p-2 rounded border-1"
+                />
+    
+                <button
+                    id="decrypt-action"
+                    class="inline-block rounded-sm border border-indigo-600 bg-indigo-600 px-12 py-3 text-sm font-medium text-white hover:bg-transparent hover:text-indigo-600 focus:ring-3 focus:outline-hidden"
+                >
+                    Decrypt
+                </button>
+            </div>
+        </label>
+    
+        <br><br>
+        <h2 class="text-xl mb-4">Results</h2>
+    
+        <div class="flow-root">
+            <dl class="-my-3 divide-y divide-gray-200 text-sm dark:divide-gray-700">
+              <div class="grid grid-cols-1 gap-1 py-3 sm:grid-cols-3 sm:gap-4">
+                <dt class="font-medium text-gray-900 dark:text-white">Encrypted:</dt>
+          
+                <dd class="text-gray-700 sm:col-span-2 dark:text-gray-200" id="encrypted-value"></dd>
+              </div>
+          
+              <div class="grid grid-cols-1 gap-1 py-3 sm:grid-cols-3 sm:gap-4">
+                <dt class="font-medium text-gray-900 dark:text-white">Decrypted:</dt>
+          
+                <dd class="text-gray-700 sm:col-span-2 dark:text-gray-200" id="decrypted-value"></dd>
+              </div>
+            </dl>
+          </div>
+    </form>
+</body>
+
+<script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
+<script type="text/javascript">
+    function uint8ArrayToBase64(uint8Array) {
+        return btoa(String.fromCharCode(...uint8Array));
+    }
+    
+    function base64ToUint8Array(base64) {
+        return new Uint8Array([...atob(base64)].map(c => c.charCodeAt(0)));
+    }
+
+    async function generateRSAKeyPair() {
+        const keyPair = await crypto.subtle.generateKey(
+            {
+                name: "RSA-OAEP",
+                modulusLength: 2048,
+                publicExponent: new Uint8Array([1, 0, 1]),
+                hash: "SHA-256",
+            },
+            true,
+            ["encrypt", "decrypt"]
+        );
+
+        return keyPair;
+    }
+
+    async function exportPrivateKey(privateKey) {
+        const exportedPrivateKey = await crypto.subtle.exportKey(
+            "pkcs8",
+            privateKey
+        );
+
+        return exportedPrivateKey;
+    }
+
+    async function generateAndEncryptAESKey(publicKey) {
+        const AESKey = await crypto.subtle.generateKey(
+            { name: "AES-GCM", length: 256 },
+            true,
+            ["encrypt", "decrypt"]
+        );
+
+        const AESKeyRaw = await crypto.subtle.exportKey("raw", AESKey);
+        const encryptedAESKey = await crypto.subtle.encrypt(
+            { name: "RSA-OAEP" },
+            publicKey,
+            AESKeyRaw
+        );
+
+        return { encryptedAESKey, AESKey };
+    }
+
+    async function decryptAESKey({ privateKey, encryptedAESKey }) {
+        const decryptedKey = await crypto.subtle.decrypt(
+            { name: "RSA-OAEP" },
+            privateKey,
+            encryptedAESKey
+        );
+
+        return decryptedKey;
+    }
+
+    async function deriveKeyFromPassword({ password, salt }) {
+        const encoder = new TextEncoder();
+        const key = await crypto.subtle.importKey(
+            "raw",
+            encoder.encode(password),
+            { name: "PBKDF2" },
+            false,
+            ["deriveKey"]
+        );
+        
+        return crypto.subtle.deriveKey(
+            {
+                name: "PBKDF2",
+                salt,
+                iterations: 100000,
+                hash: "SHA-256"
+            },
+            key,
+            { name: "AES-GCM", length: 256 },
+            true,
+            ["encrypt", "decrypt"]
+        );
+    }
+
+    async function encryptPrivateKey({ privateKey, password }) {
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const key = await deriveKeyFromPassword({ password, salt });
+        
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        
+        const encrypted = await crypto.subtle.encrypt(
+            { name: "AES-GCM", iv: iv },
+            key,
+            await exportPrivateKey(privateKey)
+        );
+        
+        return JSON.stringify({
+            salt: uint8ArrayToBase64(salt),
+            iv: uint8ArrayToBase64(iv),
+            data: uint8ArrayToBase64(new Uint8Array(encrypted))
+        });
+    }
+
+    async function decryptPrivateKey({ encryptedPackage, password }) {
+        const { salt, iv, data } = JSON.parse(encryptedPackage);
+        const key = await deriveKeyFromPassword({ password, salt: base64ToUint8Array(salt) });
+
+        const decrypted = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: base64ToUint8Array(iv) },
+            key,
+            base64ToUint8Array(data)
+        );
+        
+        return decrypted;
+    }
+
+    let _globalAESKey = undefined;
+
+    async function decryptGlobalAESKey(encryptedAESKey, privateKey) {
+        try {
+            const importedPrivateKey = await crypto.subtle.importKey(
+                "pkcs8",
+                privateKey,
+                { name: "RSA-OAEP", hash: "SHA-256" },
+                false,
+                ["decrypt"]
+            );
+
+            const decryptedKey = await crypto.subtle.decrypt(
+                { name: "RSA-OAEP" },
+                importedPrivateKey,
+                encryptedAESKey,
+            );
+
+            return new Uint8Array(decryptedKey);
+        } catch(e) {
+            console.error('decryptedAESKey', e)
+        }
+    }
+
+    document.getElementById('generate-action').addEventListener('click', async () => {
+        const password = document.getElementById('password').value;
+
+        if (!password) {
+            alert('Insert a password')
+            return;
+        }
+
+        // Execute this every new registration
+        const { privateKey, publicKey } = await generateRSAKeyPair();
+        const { encryptedAESKey } = await generateAndEncryptAESKey(publicKey);
+        await decryptAESKey({ privateKey, encryptedAESKey });
+        
+        // Encrypt and save the private Key (This should be save in the DB)
+        const encryptedPackage = await encryptPrivateKey({ privateKey, password });
+        
+        // Retrive private key
+        const privateKeyDecrypted = await decryptPrivateKey({ encryptedPackage, password })
+
+        // Decrypt AES Key
+        const AESKey = await decryptGlobalAESKey(encryptedAESKey, privateKeyDecrypted);
+
+        // Save it in memory (check if save it in session or other)
+        _globalAESKey = AESKey;
+    });
+
+    document.getElementById('dataToEncrypt').addEventListener("input", async (event) => {
+        const encrypted = await encryptData(event.target.value);
+        document.getElementById('encrypted-value').innerHTML = encrypted;
+    });
+
+    document.getElementById('decrypt-action').addEventListener('click', async () => {
+        const encryptedText = document.getElementById('encrypted-value').innerHTML;
+
+        if (encryptedText.length === 0) {
+            console.log('Insert data before decrypt')
+            return;
+        }
+
+        document.getElementById('decrypted-value').innerHTML = await decryptData(encryptedText)
+    })
+
+    async function encryptData(text) {
+        const binaryAESKey = await crypto.subtle.importKey(
+            "raw",
+            _globalAESKey,
+            { name: "AES-GCM" },
+            false,
+            ["encrypt"]
+        );
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+
+        const encoder = new TextEncoder();
+        const dataBuffer = encoder.encode(text);
+
+        const encryptedData = await crypto.subtle.encrypt(
+            { name: "AES-GCM", iv },
+            binaryAESKey,
+            dataBuffer
+        );
+
+        return JSON.stringify({
+            iv: uint8ArrayToBase64(iv), 
+            data: uint8ArrayToBase64(new Uint8Array(encryptedData)) 
+        });
+    }
+
+    async function decryptData(encrypted) {
+        const binaryAESKey = await crypto.subtle.importKey(
+            "raw",
+            _globalAESKey,
+            { name: "AES-GCM" },
+            false,
+            ["decrypt"]
+        );
+
+        const encryptedData = JSON.parse(encrypted)
+        const iv = base64ToUint8Array(encryptedData.iv)
+        const dataBuffer = base64ToUint8Array(encryptedData.data)
+
+        try {
+            const decryptedBuffer = await crypto.subtle.decrypt(
+                { name: "AES-GCM", iv },
+                binaryAESKey,
+                dataBuffer,
+            );
+
+            const decoder = new TextDecoder();
+            return decoder.decode(decryptedBuffer);
+        } catch (error) {
+            console.error("decryptData [decrypt]", error);
+            return null;
+        }
+    }
+</script>
+</html>
