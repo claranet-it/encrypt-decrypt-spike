@@ -1,0 +1,25 @@
+{
+  "name": "hybrid-cipher",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "HybridCipher.js",
+  "scripts": {
+    "build": "tsup src/HybridCipher.ts --format esm,cjs,iife --dts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/claranet-it/encrypt-decrypt-spike.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/claranet-it/encrypt-decrypt-spike/issues"
+  },
+  "homepage": "https://github.com/claranet-it/encrypt-decrypt-spike#readme",
+  "devDependencies": {
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2"
+  }
+}

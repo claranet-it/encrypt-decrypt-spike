@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hybrid Cipher</title>
+    
+    <!-- Components: https://www.hyperui.dev/components/application -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+
+<body class="p-4 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+    <form novalidate onsubmit="return false">
+        <h1 class="text-xl mb-2">Encrypt / Decrypt</h1>
+
+        <label for="password">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Password</span>
+        
+            <div class="flex">
+                <input
+                    type="password"
+                    id="password"
+                    class="mt-0.5 w-full rounded border-gray-300 shadow-sm sm:text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white p-2 rounded border-1"
+                />
+    
+                <button
+                    id="generate-action"
+                    class="inline-block rounded-sm border border-indigo-600 bg-indigo-600 px-12 py-3 text-sm font-medium text-white hover:bg-transparent hover:text-indigo-600 focus:ring-3 focus:outline-hidden"
+                >
+                    Generate
+                </button>
+            </div>
+        </label>
+
+        <br>
+
+        <label for="dataToEncrypt">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Data</span>
+        
+            <div class="flex">
+                <input
+                    type="text"
+                    id="dataToEncrypt"
+                    class="mt-0.5 w-full rounded border-gray-300 shadow-sm sm:text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white p-2 rounded border-1"
+                />
+    
+                <button
+                    id="decrypt-action"
+                    class="inline-block rounded-sm border border-indigo-600 bg-indigo-600 px-12 py-3 text-sm font-medium text-white hover:bg-transparent hover:text-indigo-600 focus:ring-3 focus:outline-hidden"
+                >
+                    Decrypt
+                </button>
+            </div>
+        </label>
+    
+        <br><br>
+        <h2 class="text-xl mb-4">Results</h2>
+    
+        <div class="flow-root">
+            <dl class="-my-3 divide-y divide-gray-200 text-sm dark:divide-gray-700">
+              <div class="grid grid-cols-1 gap-1 py-3 sm:grid-cols-3 sm:gap-4">
+                <dt class="font-medium text-gray-900 dark:text-white">Encrypted:</dt>
+          
+                <dd class="text-gray-700 sm:col-span-2 dark:text-gray-200" id="encrypted-value"></dd>
+              </div>
+          
+              <div class="grid grid-cols-1 gap-1 py-3 sm:grid-cols-3 sm:gap-4">
+                <dt class="font-medium text-gray-900 dark:text-white">Decrypted:</dt>
+          
+                <dd class="text-gray-700 sm:col-span-2 dark:text-gray-200" id="decrypted-value"></dd>
+              </div>
+            </dl>
+          </div>
+    </form>
+</body>
+
+<script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
+<script type="text/javascript" src="../dist/HybridCipher.global.js"></script>
+<script type="text/javascript">
+    // This should be saved in the DB
+    let _dbEncryptedPrivateKey = undefined;
+    let _dbEncryptedAESKey = undefined;
+
+    // These are the method to call for encrypt / decrypt
+    let _encryptFn = undefined;
+    let _decryptFn = undefined;
+
+    document.getElementById('generate-action').addEventListener('click', async () => {
+        const password = document.getElementById('password').value;
+
+        if (!password) {
+            alert('Insert a password')
+            return;
+        }
+
+        const { encryptedAESKey, encryptedPrivateKey } = await window.HybridCipher.generate(password)
+
+        _dbEncryptedPrivateKey = encryptedPrivateKey;
+        _dbEncryptedAESKey = encryptedAESKey;
+
+        const AESKey = await window.HybridCipher.getAESKey({
+            encryptedAESKey,
+            encryptedPrivateKey,
+            password
+        })
+        
+        _encryptFn = window.HybridCipher.encrypt(AESKey);
+        _decryptFn = window.HybridCipher.decrypt(AESKey);
+    });
+
+    document.getElementById('dataToEncrypt').addEventListener("input", async (event) => {
+        const encrypted = await _encryptFn(event.target.value);
+        document.getElementById('encrypted-value').innerHTML = encrypted;
+    });
+
+    document.getElementById('decrypt-action').addEventListener('click', async () => {
+        const encryptedText = document.getElementById('encrypted-value').innerHTML;
+
+        if (encryptedText.length === 0) {
+            console.log('Insert data')
+            return;
+        }
+
+        document.getElementById('decrypted-value').innerHTML = await _decryptFn(encryptedText)
+    })
+</script>
+</html>
