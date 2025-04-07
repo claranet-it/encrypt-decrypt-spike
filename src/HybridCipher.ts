@@ -1,6 +1,3 @@
-import { EncryptedData } from "./HybridCipher.types";
-import { base64ToUint8Array, uint8ArrayToBase64 } from "./utils";
-
 const RSA_MODULUS_LENGTH = 2048;
 const RSA_ALGORITHM_NAME = "RSA-OAEP";
 
@@ -13,6 +10,19 @@ const AES_GCM_IV_LENGTH_BYTES = 12;
 
 const SALT_LENGTH_BYTES = 16;
 const HASH_FUNCTION = 'SHA-256';
+
+export type EncryptedData = {
+    iv: Uint8Array,
+    data: ArrayBuffer,
+}
+
+const uint8ArrayToBase64 = (uint8Array: Uint8Array) => {
+    return btoa(String.fromCharCode(...uint8Array));
+}
+
+const base64ToUint8Array = (base64: string) => {
+    return new Uint8Array([...atob(base64)].map(c => c.charCodeAt(0)));
+}
 
 export const serialize = (encryptedData: EncryptedData) => JSON.stringify({
     iv: uint8ArrayToBase64(encryptedData.iv),
@@ -188,17 +198,17 @@ const encryptData = (AESKey: ArrayBuffer) => async (text: string) => {
             dataBuffer
         );
 
-        return serialize({
+        return {
             iv: iv, 
             data: encryptedData,
-        });
+        };
     } catch (error) {
         console.error("encryptData", error);
         return null;
     }
 }
 
-const decryptData = (AESKey: ArrayBuffer) => async (encryptedText: string) => {
+const decryptData = (AESKey: ArrayBuffer) => async (encryptedData: EncryptedData) => {
     const binaryAESKey = await crypto.subtle.importKey(
         "raw",
         AESKey,
@@ -207,7 +217,7 @@ const decryptData = (AESKey: ArrayBuffer) => async (encryptedText: string) => {
         ["decrypt"]
     );
 
-    const { iv, data } = deserialize(encryptedText)
+    const { iv, data } = encryptedData
 
     try {
         const decryptedBuffer = await crypto.subtle.decrypt(
@@ -248,7 +258,9 @@ export const HybridCipher = {
         return decryptAESKey({ privateKey, encryptedAESKey });
     },
     encrypt: (AESKey: ArrayBuffer) => encryptData(AESKey),
-    decrypt: (AESKey: ArrayBuffer) => decryptData(AESKey)
+    decrypt: (AESKey: ArrayBuffer) => decryptData(AESKey),
+    serialize,
+    deserialize,
 }
 
 export default HybridCipher

@@ -110,7 +110,9 @@
 
     document.getElementById('dataToEncrypt').addEventListener("input", async (event) => {
         const encrypted = await _encryptFn(event.target.value);
-        document.getElementById('encrypted-value').innerHTML = encrypted;
+        const serialized = window.HybridCipher.serialize(encrypted);
+
+        document.getElementById('encrypted-value').innerHTML = serialized;
     });
 
     document.getElementById('decrypt-action').addEventListener('click', async () => {
@@ -121,7 +123,8 @@
             return;
         }
 
-        document.getElementById('decrypted-value').innerHTML = await _decryptFn(encryptedText)
+        const deserialized = window.HybridCipher.deserialize(encryptedText);
+        document.getElementById('decrypted-value').innerHTML = await _decryptFn(deserialized);
     })
 </script>
 </html>
